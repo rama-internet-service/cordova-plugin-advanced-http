@@ -23,6 +23,22 @@
     AFSecurityPolicy *securityPolicy;
 }
 
+
+- (NSDictionary *)urlToDictionary:(NSString *)query {
+    NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
+    NSString *subQuery = [[query componentsSeparatedByString:@"?"] objectAtIndex:1];
+    NSArray *pairs = [subQuery componentsSeparatedByString:@"&"];
+    
+    for (NSString *pair in pairs) {
+        NSArray *elements = [pair componentsSeparatedByString:@"="];
+        NSString *key = [[elements objectAtIndex:0] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+        NSString *val = [[elements objectAtIndex:1] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+        
+        [dict setObject:val forKey:key];
+    }
+    return dict;
+}
+
 - (void)pluginInitialize {
     securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeNone];
 }
@@ -349,15 +365,16 @@
 
     CordovaHttpPlugin* __weak weakSelf = self;
     [[SDNetworkActivityIndicator sharedActivityIndicator] startActivity];
+    NSDictionary *parameters = [self urlToDictionary:url];
 
     @try {
-        [manager POST:url parameters:nil constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
+        [manager POST:url parameters:parameters constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
             NSError *error;
             for (int i = 0; i < [filePaths count]; i++) {
                 NSString *filePath = (NSString *) [filePaths objectAtIndex:i];
                 NSString *uploadName = (NSString *) [names objectAtIndex:i];
                 NSURL *fileURL = [NSURL URLWithString: filePath];
-                [formData appendPartWithFileURL:fileURL name:uploadName error:&error];
+                [formData appendPartWithFileURL:fileURL name:@"file" error:&error];
             }
             if (error) {
                 NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
